@@ -1,0 +1,107 @@
+# Data files
+data/*.json
+
+# Documentation files
+docs/*.pdf
+
+# PostgreSQL data
+postgres_data/
+
+# Uploads directory
+uploads/
+
+# Compiled class files
+*.class
+
+# Log files
+*.log
+.mtj.tmp/
+
+# Package Files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# JVM crash logs
+hs_err_pid*
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+.gradle/
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+.gradletasknamecache
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+.code-workspace
+
+# Spring Boot
+spring-boot-*.pid
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# Frontend build outputs
+/dist/
+/build/
+
+# React
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Power BI
+*.pbix.lock
+
+# Application specific
+/uploads/*
+!/uploads/.gitkeep

@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  postgres:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    container_name: ihd_analytics_db
+    restart: always
+    environment:
+      - POSTGRES_USER=ihd_user
+      - POSTGRES_PASSWORD=ihd_password
+      - POSTGRES_DB=ihd_analytics
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./uploads:/uploads
+    networks:
+      - ihd_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ihd_user -d ihd_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  ihd_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
