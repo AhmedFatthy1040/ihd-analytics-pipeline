@@ -60,6 +60,157 @@ The PostgreSQL database will be available at:
 
 Current progress:
 - ✅ Database schema design and implementation
-- ⬜ Spring Boot backend
+- ✅ Spring Boot backend
 - ⬜ React frontend
 - ⬜ Power BI dashboards
+
+## API Service
+
+The API service provides endpoints for uploading and processing feedback data files. For more details, see [api-service/README.md](api-service/README.md).
+
+### Key Features
+
+- REST API for file uploads and job monitoring
+- Spring Batch processing for efficient data handling
+- Database integration with PostgreSQL
+- Chunked processing (100 records/chunk)
+- Error logging and reporting
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/feedback/upload` | POST | Upload JSON feedback file |
+| `/api/v1/jobs` | GET | List all processing jobs |
+| `/api/v1/jobs/{jobId}` | GET | Get specific job status |
+| `/api/v1/jobs/{jobId}/errors` | GET | Get errors for specific job |
+| `/api/v1/health` | GET | Health check endpoint |
+
+### Running the API Service
+
+```bash
+cd api-service
+./start.sh
+```
+
+## API Documentation
+
+### Endpoints Details
+
+1. **Upload Feedback File**
+   - Endpoint: `/api/v1/feedback/upload`
+   - Method: `POST`
+   - Content-Type: `multipart/form-data`
+   - Parameter: `file` (JSON file)
+   - Response Example:
+     ```json
+     {
+       "success": true,
+       "message": "File uploaded and processing started",
+       "data": {
+         "jobId": "56f5f3e7-1eb6-49d1-9a23-77251d17b43a",
+         "filename": "Feedback_50k_2.json",
+         "status": "STARTED",
+         "startTime": "2025-05-20T15:55:37.978997378",
+         "endTime": null,
+         "recordsProcessed": null,
+         "errorMessage": null
+       }
+     }
+     ```
+
+2. **List Processing Jobs**
+   - Endpoint: `/api/v1/jobs`
+   - Method: `GET`
+   - Response Example:
+     ```json
+     {
+       "success": true,
+       "message": "Operation completed successfully",
+       "data": [
+         {
+           "jobId": "56f5f3e7-1eb6-49d1-9a23-77251d17b43a",
+           "filename": "Feedback_50k_2.json",
+           "status": "COMPLETED",
+           "startTime": "2025-05-20T15:55:37.978997378",
+           "endTime": "2025-05-20T15:57:45.123456789",
+           "recordsProcessed": 50000,
+           "errorMessage": null
+         }
+       ]
+     }
+     ```
+
+3. **Get Job Status**
+   - Endpoint: `/api/v1/jobs/{jobId}`
+   - Method: `GET`
+   - Response: Same format as individual job in the list response
+
+4. **Get Job Errors**
+   - Endpoint: `/api/v1/jobs/{jobId}/errors`
+   - Method: `GET`
+   - Response Example:
+     ```json
+     {
+       "success": true,
+       "message": "Operation completed successfully",
+       "data": [] // Contains error records if any
+     }
+     ```
+
+5. **Health Check**
+   - Endpoint: `/api/v1/health`
+   - Method: `GET`
+   - Response Example:
+     ```json
+     {
+       "success": true,
+       "message": "Operation completed successfully",
+       "data": {
+         "environment": "default",
+         "service": "ihd-api-service",
+         "status": "UP",
+         "timestamp": 1747756457769
+       }
+     }
+     ```
+
+### Key Features and Requirements
+
+1. **File Upload and Storage**
+   - Files are stored in the `./uploads` directory
+   - Duplicate file uploads are prevented
+   - Only JSON files are accepted
+
+2. **Batch Processing**
+   - Files are processed asynchronously using Spring Batch
+   - Processing is chunk-oriented (100 records per chunk)
+   - Progress can be monitored through the jobs endpoint
+   - Failed records are logged and can be retrieved
+
+3. **Error Handling**
+   - Comprehensive error logging
+   - Failed records are tracked and can be queried
+   - Job status includes error messages when applicable
+
+### Usage Examples
+
+1. **Upload a File**
+   ```bash
+   curl -X POST -F "file=@data/feedback.json" http://localhost:8080/api/v1/feedback/upload
+   ```
+
+2. **Check Job Status**
+   ```bash
+   curl http://localhost:8080/api/v1/jobs/{jobId}
+   ```
+
+3. **List All Jobs**
+   ```bash
+   curl http://localhost:8080/api/v1/jobs
+   ```
+
+4. **Check Health**
+   ```bash
+   curl http://localhost:8080/api/v1/health
+   ```

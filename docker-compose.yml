@@ -25,6 +25,26 @@ services:
       timeout: 5s
       retries: 5
 
+  api-service:
+    build:
+      context: ./api-service
+      dockerfile: Dockerfile
+    container_name: ihd_analytics_api
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ihd_analytics
+      - SPRING_DATASOURCE_USERNAME=ihd_user
+      - SPRING_DATASOURCE_PASSWORD=ihd_password
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - ihd_network
+
 networks:
   ihd_network:
     driver: bridge

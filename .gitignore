@@ -7,8 +7,9 @@ docs/*.pdf
 # PostgreSQL data
 postgres_data/
 
-# Uploads directory
-uploads/
+# Uploads directory (excluding metadata)
+uploads/*
+!uploads/metadata.json
 
 # Compiled class files
 *.class
@@ -28,6 +29,18 @@ uploads/
 
 # JVM crash logs
 hs_err_pid*
+
+# IDE-specific files
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+.classpath
+.project
+.settings/
+.metadata/
+.vscode/
 
 # Maven
 target/
