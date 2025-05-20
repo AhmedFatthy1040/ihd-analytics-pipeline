@@ -38,10 +38,27 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ihd_analytics
       - SPRING_DATASOURCE_USERNAME=ihd_user
       - SPRING_DATASOURCE_PASSWORD=ihd_password
+      - SERVER_SERVLET_CONTEXT_PATH=/
     ports:
       - "8080:8080"
     volumes:
       - ./uploads:/app/uploads
+    networks:
+      - ihd_network
+      
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ihd_analytics_frontend
+    restart: always
+    depends_on:
+      - api-service
+    environment:
+      - REACT_APP_API_URL=http://api-service:8080
+      - REACT_APP_USE_MOCK_API=false
+    ports:
+      - "3000:80"
     networks:
       - ihd_network
 

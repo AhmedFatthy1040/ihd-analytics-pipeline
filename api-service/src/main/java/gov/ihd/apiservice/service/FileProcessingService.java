@@ -14,20 +14,20 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.task.TaskExecutor;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import gov.ihd.apiservice.event.JobEventListener;
 
 @Slf4j
 @Service
@@ -38,50 +38,52 @@ public class FileProcessingService {
     private final Job importFeedbackJob;
     private final JobRepository jobRepository;
     private final ObjectMapper objectMapper;
+    private final TaskExecutor taskExecutor;
+    private final JobEventListener jobEventListener;
     
     @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
     
-    private final Map<String, ProcessingJobDto> jobStatusMap = new ConcurrentHashMap<>();
+    @Value("${app.job-history.max-size:1000}")
+    private int maxJobHistorySize;
     
     public ProcessingJobDto uploadAndProcessFile(MultipartFile file) throws IOException {
         // Create upload directory if it doesn't exist
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
+        File uploadDir = new File(this.uploadDir);
+        if (!uploadDir.exists()) {
+            if (!uploadDir.mkdirs()) {
+                throw new IOException("Failed to create upload directory: " + this.uploadDir);
+            }
+            log.info("Created upload directory: {}", uploadDir.getAbsolutePath());
         }
         
         // Check if file exists in uploads directory
         String originalFilename = file.getOriginalFilename();
-        Path filePath = uploadPath.resolve(originalFilename);
-        if (Files.exists(filePath)) {
+        File targetFile = new File(uploadDir, originalFilename);
+        
+        if (targetFile.exists()) {
             throw new RuntimeException("File already exists in upload directory: " + originalFilename);
         }
         
         // Save the file
-        file.transferTo(filePath.toFile());
-        log.info("File saved: {}", filePath);
+        file.transferTo(targetFile.toPath());
+        log.info("File saved to: {}", targetFile.getAbsolutePath());
         
         // Start the processing job
-        return startProcessingJob(filePath.toFile(), originalFilename);
+        return startProcessingJob(targetFile, originalFilename);
     }
     
+    @Transactional
     public ProcessingJobDto startProcessingJob(File file, String filename) {
-        // Generate a unique job ID
+        // Clean up old job entries if we exceed the max size
+        ((JobProgressService) jobEventListener).cleanupOldJobs(maxJobHistorySize);
+        
+        // Generate a unique job ID and create the job
         String jobId = UUID.randomUUID().toString();
+        ProcessingJobDto jobDto = ((JobProgressService) jobEventListener).createJob(jobId, filename);
         
-        // Create a job status object
-        ProcessingJobDto jobDto = new ProcessingJobDto();
-        jobDto.setJobId(jobId);
-        jobDto.setFilename(filename);
-        jobDto.setStartTime(LocalDateTime.now());
-        jobDto.setStatus(JobStatus.STARTED);
-        
-        // Store job status
-        jobStatusMap.put(jobId, jobDto);
-        
-        // Run job asynchronously
-        new Thread(() -> {
+        // Run job asynchronously using TaskExecutor
+        taskExecutor.execute(() -> {
             try {
                 // Prepare job parameters
                 JobParameters parameters = new JobParametersBuilder()
@@ -99,43 +101,24 @@ public class FileProcessingService {
             } catch (JobExecutionAlreadyRunningException | JobRestartException |
                      JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
                 log.error("Error running job: {}", e.getMessage(), e);
-                
-                // Update status on failure
-                ProcessingJobDto job = jobStatusMap.get(jobId);
-                job.setStatus(JobStatus.FAILED);
-                job.setEndTime(LocalDateTime.now());
-                job.setErrorMessage(e.getMessage());
+                jobEventListener.onJobFailed(jobId, e.getMessage());
             }
-        }).start();
+        });
         
         return jobDto;
     }
     
-    public List<ProcessingJobDto> getAllJobs() {
-        return jobStatusMap.values().stream()
-                .sorted((j1, j2) -> j2.getStartTime().compareTo(j1.getStartTime()))
-                .collect(Collectors.toList());
-    }
-    
-    public ProcessingJobDto getJobStatus(String jobId) {
-        return jobStatusMap.get(jobId);
-    }
-    
     private void updateJobStatus(String jobId, JobExecution jobExecution) {
-        ProcessingJobDto job = jobStatusMap.get(jobId);
         if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
-            job.setStatus(JobStatus.COMPLETED);
-            job.setEndTime(LocalDateTime.now());
-            job.setRecordsProcessed((int)jobExecution.getStepExecutions().stream()
-                    .mapToLong(StepExecution::getWriteCount).sum());
+            int recordsProcessed = (int)jobExecution.getStepExecutions().stream()
+                    .mapToLong(StepExecution::getWriteCount)
+                    .sum();
+            jobEventListener.onJobCompleted(jobId, recordsProcessed);
         } else if (jobExecution.getStatus() == BatchStatus.FAILED) {
-            job.setStatus(JobStatus.FAILED);
-            job.setEndTime(LocalDateTime.now());
-            job.setErrorMessage(jobExecution.getAllFailureExceptions().stream()
+            String errorMessage = jobExecution.getAllFailureExceptions().stream()
                     .map(Throwable::getMessage)
-                    .collect(Collectors.joining(", ")));
-        } else {
-            job.setStatus(JobStatus.valueOf(jobExecution.getStatus().name()));
+                    .collect(Collectors.joining(", "));
+            jobEventListener.onJobFailed(jobId, errorMessage);
         }
     }
 }

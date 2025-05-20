@@ -56,20 +56,7 @@ public class FeedbackController {
         }
     }
     
-    @GetMapping("/jobs")
-    public ResponseEntity<ApiResponse<List<ProcessingJobDto>>> getAllJobs() {
-        List<ProcessingJobDto> jobs = fileProcessingService.getAllJobs();
-        return ResponseEntity.ok(ApiResponse.<List<ProcessingJobDto>>success(jobs));
-    }
-    
-    @GetMapping("/jobs/{jobId}")
-    public ResponseEntity<ApiResponse<ProcessingJobDto>> getJobStatus(@PathVariable String jobId) {
-        ProcessingJobDto job = fileProcessingService.getJobStatus(jobId);
-        if (job == null) {
-            return ResponseEntity
-                    .status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.<ProcessingJobDto>error("Job not found with ID: " + jobId));
-        }
-        return ResponseEntity.ok(ApiResponse.<ProcessingJobDto>success(job));
-    }
+    // Jobs endpoints have been moved to JobController
+    // Please use /api/v1/jobs and /api/v1/jobs/{jobId} endpoints instead
+
 }

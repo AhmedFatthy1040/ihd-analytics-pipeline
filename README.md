@@ -39,11 +39,24 @@ For faster Power BI dashboard loading:
 
 ### Prerequisites
 - Docker and Docker Compose
-- Node.js and npm
+- Node.js v22.15.1 and npm
 - Java 17
 - Maven
 
-### Database Setup
+### Running with Docker
+```bash
+# Start the complete system with Docker Compose
+docker-compose up -d
+```
+
+This will start:
+- PostgreSQL database on port 5432
+- API Service on port 8080
+- Frontend on port 3000
+
+### Manual Setup
+
+#### Database Setup
 ```bash
 cd database
 docker-compose up -d
@@ -61,7 +74,7 @@ The PostgreSQL database will be available at:
 Current progress:
 - ✅ Database schema design and implementation
 - ✅ Spring Boot backend
-- ⬜ React frontend
+- ✅ React frontend
 - ⬜ Power BI dashboards
 
 ## API Service
@@ -214,3 +227,37 @@ cd api-service
    ```bash
    curl http://localhost:8080/api/v1/health
    ```
+
+## Frontend
+
+The frontend is a React application providing a user interface for uploading JSON files and monitoring processing jobs. For more details, see [frontend/README.md](frontend/README.md).
+
+### Key Features
+
+- Drag & drop file upload interface for JSON files
+- Upload progress indicator
+- Success/error notifications
+- Job status monitoring dashboard with auto-refresh
+- Mock data support for development without backend
+
+### Running the Frontend
+
+```bash
+# Install dependencies
+cd frontend
+npm install
+
+# Start development server
+npm start
+```
+
+The frontend will be available at http://localhost:3000.
+
+### Build for Production
+
+```bash
+cd frontend
+npm run build
+```
+
+This creates a production build in the `build` directory that can be served by any static file server or the included Nginx configuration.

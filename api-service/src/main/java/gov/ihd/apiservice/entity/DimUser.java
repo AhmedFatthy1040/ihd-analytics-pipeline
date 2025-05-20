@@ -31,4 +31,59 @@ public class DimUser {
     
     @Column(name = "listed_count")
     private Integer listedCount;
+    
+    @Column(name = "description")
+    private String description;
+    
+    @Column(name = "location")
+    private String location;
+    
+    @Column(name = "url")
+    private String url;
+    
+    @Column(name = "protected")
+    private Boolean isProtected;
+    
+    @Column(name = "verified")
+    private Boolean isVerified;
+    
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
+    
+    @Column(name = "language")
+    private String language;
+    
+    @Column(name = "email")
+    private String email;
+    
+    @Column(name = "phone_number")
+    private String phoneNumber;
+    
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+    
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public void setFollowersCount(int followersCount) {
+        this.followersCount = followersCount;
+    }
+    
+    public void setFollowingCount(int followingCount) {
+        this.followingCount = followingCount;
+    }
+    
+    public void setTweetCount(int tweetCount) {
+        this.tweetCount = tweetCount;
+    }
+    
+    public void setListedCount(int listedCount) {
+        this.listedCount = listedCount;
+    }
 }

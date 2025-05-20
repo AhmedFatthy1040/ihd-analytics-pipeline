@@ -11,11 +11,10 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Create directory for uploads
-RUN mkdir -p /app/uploads
-
-# Set proper permissions
-RUN chmod -R 755 /app
+# Create directory for uploads and set permissions
+RUN mkdir -p /app/uploads && \
+    chmod -R 777 /app/uploads && \
+    chmod -R 755 /app
 
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

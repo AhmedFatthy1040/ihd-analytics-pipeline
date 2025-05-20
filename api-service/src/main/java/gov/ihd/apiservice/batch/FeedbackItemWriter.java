@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -35,28 +36,63 @@ public class FeedbackItemWriter implements ItemWriter<FeedbackBatchItem> {
         List<FactFeedback> feedbacks = new ArrayList<>();
         List<BridgeFeedbackHashtag> hashtagBridges = new ArrayList<>();
         List<BridgeFeedbackAgency> agencyBridges = new ArrayList<>();
-
+        
+        // Pre-fetch existing tweet IDs to avoid individual lookups
+        List<String> tweetIds = new ArrayList<>();
         for (FeedbackBatchItem item : items) {
             if (item != null && item.getFeedback() != null) {
-                feedbacks.add(item.getFeedback());
+                tweetIds.add(item.getFeedback().getTweetId());
+            }
+        }
+        
+        // Get existing tweet IDs in a single query
+        List<String> existingTweetIds = feedbackRepository.findExistingTweetIds(tweetIds);
+        
+        for (FeedbackBatchItem item : items) {
+            if (item != null && item.getFeedback() != null) {
+                FactFeedback feedback = item.getFeedback();
                 
-                // Save feedback first to get generated ID
-                FactFeedback savedFeedback = feedbackRepository.save(item.getFeedback());
-                Long feedbackId = savedFeedback.getFeedbackId();
-                
-                // Process hashtag bridges
-                if (item.getHashtagBridges() != null) {
-                    for (BridgeFeedbackHashtag bridge : item.getHashtagBridges()) {
-                        bridge.setFeedbackId(feedbackId);
-                        hashtagBridges.add(bridge);
-                    }
+                // Skip if tweet already exists
+                if (existingTweetIds.contains(feedback.getTweetId())) {
+                    log.debug("Skipping duplicate feedback with tweet_id: {}", feedback.getTweetId());
+                    continue;
                 }
                 
-                // Process agency bridges
-                if (item.getAgencyBridges() != null) {
-                    for (BridgeFeedbackAgency bridge : item.getAgencyBridges()) {
-                        bridge.setFeedbackId(feedbackId);
-                        agencyBridges.add(bridge);
+                feedbacks.add(feedback);
+            }
+        }
+        
+        // Batch save all feedback items at once
+        if (!feedbacks.isEmpty()) {
+            List<FactFeedback> savedFeedbacks = feedbackRepository.saveAll(feedbacks);
+            
+            // Process bridges for all saved feedback items
+            for (int i = 0; i < savedFeedbacks.size(); i++) {
+                FactFeedback savedFeedback = savedFeedbacks.get(i);
+                Long feedbackId = savedFeedback.getFeedbackId();
+                
+                // Find the matching FeedbackBatchItem
+                for (FeedbackBatchItem item : items) {
+                    if (item != null && item.getFeedback() != null && 
+                        item.getFeedback().getTweetId().equals(savedFeedback.getTweetId())) {
+                        
+                        // Process hashtag bridges
+                        if (item.getHashtagBridges() != null) {
+                            for (BridgeFeedbackHashtag bridge : item.getHashtagBridges()) {
+                                bridge.setFeedbackId(feedbackId);
+                                hashtagBridges.add(bridge);
+                            }
+                        }
+                        
+                        // Process agency bridges
+                        if (item.getAgencyBridges() != null) {
+                            for (BridgeFeedbackAgency bridge : item.getAgencyBridges()) {
+                                bridge.setFeedbackId(feedbackId);
+                                agencyBridges.add(bridge);
+                            }
+                        }
+                        
+                        break;
                     }
                 }
             }
@@ -65,7 +101,7 @@ public class FeedbackItemWriter implements ItemWriter<FeedbackBatchItem> {
         log.info("Saving {} feedback items, {} hashtag bridges, and {} agency bridges",
                 feedbacks.size(), hashtagBridges.size(), agencyBridges.size());
         
-        // Save all the entities
+        // Use batched operations for better performance
         if (!hashtagBridges.isEmpty()) {
             hashtagBridgeRepository.saveAll(hashtagBridges);
         }

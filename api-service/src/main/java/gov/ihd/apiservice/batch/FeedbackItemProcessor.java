@@ -4,13 +4,16 @@ import gov.ihd.apiservice.entity.*;
 import gov.ihd.apiservice.model.FeedbackItem;
 import gov.ihd.apiservice.repository.*;
 import gov.ihd.apiservice.service.ErrorLogService;
+import gov.ihd.apiservice.event.JobEventListener;
 import gov.ihd.apiservice.service.TimeService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.core.annotation.BeforeStep;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,7 +26,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class FeedbackItemProcessor implements ItemProcessor<FeedbackItem, FeedbackBatchItem> {
+public class FeedbackItemProcessor implements ItemProcessor<FeedbackItem, FeedbackBatchItem>, StepExecutionListener {
 
     private final DimTimeRepository timeRepository;
     private final DimUserRepository userRepository;
@@ -35,22 +38,15 @@ public class FeedbackItemProcessor implements ItemProcessor<FeedbackItem, Feedba
     private final FactFeedbackRepository feedbackRepository;
     private final EntityManager entityManager;
     private final ErrorLogService errorLogService;
+    private final JobEventListener jobEventListener;
     
     @Value("${spring.jpa.properties.hibernate.jdbc.batch_size:100}")
     private int batchSize;
     
+    private int processedCount = 0;
+    
     private String jobId;
     private long feedbackIdCounter = 0;
-    
-    @BeforeStep
-    public void beforeStep(StepExecution stepExecution) {
-        JobExecution jobExecution = stepExecution.getJobExecution();
-        this.jobId = jobExecution.getJobParameters().getString("jobId");
-        
-        // Get the next value from the sequence
-        Query query = entityManager.createNativeQuery("SELECT nextval('ihd_analytics.seq_feedback_id')");
-        this.feedbackIdCounter = ((Number) query.getSingleResult()).longValue();
-    }
 
     @Override
     public FeedbackBatchItem process(FeedbackItem item) {
@@ -183,6 +179,12 @@ public class FeedbackItemProcessor implements ItemProcessor<FeedbackItem, Feedba
                 }
             }
             
+            // Update progress every batchSize items
+            processedCount++;
+            if (processedCount % batchSize == 0 && jobId != null) {
+                jobEventListener.onJobProgress(jobId, processedCount);
+            }
+
             return new FeedbackBatchItem(feedback, hashtagBridges, agencyBridges);
             
         } catch (Exception e) {
@@ -197,8 +199,29 @@ public class FeedbackItemProcessor implements ItemProcessor<FeedbackItem, Feedba
                     item
                 );
             }
-            
             return null;
         }
+    }
+
+    @Override
+    public void beforeStep(StepExecution stepExecution) {
+        JobExecution jobExecution = stepExecution.getJobExecution();
+        this.jobId = jobExecution.getJobParameters().getString("jobId");
+        
+        // Get the next value from the sequence
+        Query query = entityManager.createNativeQuery("SELECT nextval('ihd_analytics.seq_feedback_id')");
+        this.feedbackIdCounter = ((Number) query.getSingleResult()).longValue();
+        
+        // Reset the processed count at the start of each step
+        this.processedCount = 0;
+    }
+
+    @Override
+    public ExitStatus afterStep(StepExecution stepExecution) {
+        // Final progress update
+        if (jobId != null) {
+            jobEventListener.onJobProgress(jobId, processedCount);
+        }
+        return ExitStatus.COMPLETED;
     }
 }
