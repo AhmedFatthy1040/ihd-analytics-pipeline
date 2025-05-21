@@ -9,6 +9,14 @@ A comprehensive analytics pipeline for monitoring citizen feedback across differ
 - **Database**: PostgreSQL with star schema for optimized analytics with partitioning
 - **Analytics**: Power BI dashboards (partially implemented)
 
+## Screenshots
+
+![Screenshot from 2025-05-21 14-20-31](https://github.com/user-attachments/assets/7691425d-c173-4b95-8d57-3071a7f66cdd)
+
+![Screenshot from 2025-05-21 14-20-22](https://github.com/user-attachments/assets/67ad916c-af67-4bd8-9f5e-cbc129b1aab0)
+
+![Screenshot from 2025-05-21 14-19-51](https://github.com/user-attachments/assets/b3297a50-1da5-4b42-9a56-91d32fdf1066)
+
 ## Project Status and Evaluation
 
 ### Completed Components
